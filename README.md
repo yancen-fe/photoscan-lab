@@ -50,6 +50,14 @@ npm run build
 npm run preview
 ```
 
+## Deploy
+
+PhotoScan Lab can be deployed as a static site. For Tencent Cloud CVM + Nginx, see:
+
+```text
+docs/deploy-tencent-cloud.md
+```
+
 ## Privacy
 
 PhotoScan Lab 不依赖后端服务。上传、处理、预览和导出都在浏览器本地完成。
