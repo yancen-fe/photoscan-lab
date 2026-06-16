@@ -140,3 +140,43 @@ SSH_USER=root SSH_HOST=YOUR_SERVER_IP DEPLOY_PATH=/var/www/photoscan-lab ./scrip
 ```
 
 脚本会重新构建并覆盖服务器上的旧 `dist/` 文件。
+
+## Existing Caddy / Docker Setup
+
+如果服务器上已经有 Caddy 容器占用了 `80` 和 `443`，不要再启动系统 Nginx。可以继续复用 Caddy：
+
+1. 把构建产物上传到服务器目录：
+
+```bash
+SSH_USER=ubuntu \
+SSH_HOST=YOUR_SERVER_IP \
+DEPLOY_PATH=/var/www/photoscan-lab \
+./scripts/deploy-static.sh
+```
+
+2. 给 Caddy 容器增加只读挂载：
+
+```yaml
+volumes:
+  - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+  - /var/www/photoscan-lab:/srv/photoscan-lab:ro
+  - caddy_data:/data
+  - caddy_config:/config
+```
+
+3. 在 `Caddyfile` 里增加静态站点：
+
+```caddyfile
+http://YOUR_SERVER_IP {
+  encode zstd gzip
+  root * /srv/photoscan-lab
+  try_files {path} /index.html
+  file_server
+}
+```
+
+4. 重建 Caddy 容器：
+
+```bash
+docker compose up -d caddy
+```
