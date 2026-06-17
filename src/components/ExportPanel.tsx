@@ -5,11 +5,19 @@ interface ExportPanelProps {
   result: ScanResult | null;
   history: Array<{ id: string; name: string; url: string }>;
   activeId: string | null;
+  downloadNames: { png: string; jpeg: string } | null;
   onSelectHistory: (id: string) => void;
   onDownload: (format: "png" | "jpeg") => void;
 }
 
-export function ExportPanel({ result, history, activeId, onSelectHistory, onDownload }: ExportPanelProps) {
+export function ExportPanel({
+  result,
+  history,
+  activeId,
+  downloadNames,
+  onSelectHistory,
+  onDownload,
+}: ExportPanelProps) {
   return (
     <aside className="panel export-panel" aria-label="导出">
       <div className="panel__header">
@@ -21,11 +29,23 @@ export function ExportPanel({ result, history, activeId, onSelectHistory, onDown
       </div>
 
       <div className="export-actions">
-        <button className="primary-button" type="button" disabled={!result} onClick={() => onDownload("png")}>
+        <button
+          className="primary-button"
+          type="button"
+          disabled={!result}
+          title={downloadNames ? `下载为 ${downloadNames.png}` : "下载 PNG"}
+          onClick={() => onDownload("png")}
+        >
           <Download size={17} />
           PNG
         </button>
-        <button className="secondary-button" type="button" disabled={!result} onClick={() => onDownload("jpeg")}>
+        <button
+          className="secondary-button"
+          type="button"
+          disabled={!result}
+          title={downloadNames ? `下载为 ${downloadNames.jpeg}` : "下载 JPEG"}
+          onClick={() => onDownload("jpeg")}
+        >
           <ImageDown size={17} />
           JPEG
         </button>
@@ -33,13 +53,14 @@ export function ExportPanel({ result, history, activeId, onSelectHistory, onDown
 
       <div className="stat-grid">
         <OutputStat label="尺寸" value={result ? `${result.width} x ${result.height}` : "--"} />
+        <OutputStat label="规格" value={result ? result.cropPresetLabel ?? "原比例" : "--"} />
         <OutputStat label="校正" value={result ? `${result.deskewDegrees.toFixed(2)} deg` : "--"} />
-        <OutputStat label="裁边" value={result?.cropApplied ? "已应用" : "未应用"} />
+        <OutputStat label="裁剪" value={result?.cropApplied ? "已应用" : "未应用"} />
       </div>
 
       <div className="quality-note">
         <Info size={16} />
-        <span>复印效果、旋转和导出都在浏览器本地完成。</span>
+        <span>裁剪规格、复印效果、旋转和导出都在浏览器本地完成。</span>
       </div>
 
       <div className="history-block">

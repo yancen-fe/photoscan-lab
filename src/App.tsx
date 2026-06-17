@@ -33,6 +33,17 @@ function App() {
     () => history.find((item) => item.id === activeId) ?? null,
     [activeId, history],
   );
+  const downloadNames = useMemo(() => {
+    if (!result) {
+      return null;
+    }
+
+    const baseName = stripExtension(activeImage?.name ?? fileName ?? "scan");
+    return {
+      png: buildDownloadName(baseName, result, "png"),
+      jpeg: buildDownloadName(baseName, result, "jpg"),
+    };
+  }, [activeImage?.name, fileName, result]);
 
   useEffect(() => {
     let cancelled = false;
@@ -111,8 +122,9 @@ function App() {
     const mimeType = format === "png" ? "image/png" : "image/jpeg";
     const dataUrl = await convertDataUrl(result.dataUrl, mimeType);
     const link = document.createElement("a");
-    const baseName = (activeImage?.name ?? fileName ?? "scan").replace(/\.[^.]+$/, "");
-    link.download = `${baseName}-scan.${format === "png" ? "png" : "jpg"}`;
+    const baseName = stripExtension(activeImage?.name ?? fileName ?? "scan");
+    const extension = format === "png" ? "png" : "jpg";
+    link.download = buildDownloadName(baseName, result, extension);
     link.href = dataUrl;
     link.click();
   }
@@ -151,12 +163,35 @@ function App() {
           result={result}
           history={history}
           activeId={activeId}
+          downloadNames={downloadNames}
           onSelectHistory={selectHistory}
           onDownload={download}
         />
       </div>
     </div>
   );
+}
+
+function buildDownloadName(sourceName: string, result: ScanResult, extension: "png" | "jpg") {
+  const baseName = toFileNamePart(sourceName) || "scan";
+  const cropName = result.cropPresetLabel ? toFileNamePart(result.cropPresetLabel) : "original-ratio";
+  const pixelSize = `${result.width}x${result.height}px`;
+  return `${baseName}-scan-${cropName}-${pixelSize}.${extension}`;
+}
+
+function stripExtension(fileName: string) {
+  return fileName.replace(/\.[^.]+$/, "");
+}
+
+function toFileNamePart(value: string) {
+  return value
+    .trim()
+    .replace(/\s*x\s*/gi, "x")
+    .replace(/\s+(cm|mm|px)\b/gi, "$1")
+    .replace(/\s+/g, "-")
+    .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
 export default App;

@@ -1,6 +1,7 @@
 import {
   ClipboardCheck,
   Contrast,
+  Crop,
   Eraser,
   History,
   Palette,
@@ -11,7 +12,7 @@ import {
   Sparkles,
   WandSparkles,
 } from "lucide-react";
-import { defaultSettings, ScanSettings, ScanStyle } from "../lib/scanProcessor";
+import { cropPresets, CropPresetId, defaultSettings, ScanSettings, ScanStyle } from "../lib/scanProcessor";
 
 interface ControlPanelProps {
   settings: ScanSettings;
@@ -62,6 +63,14 @@ export function ControlPanel({ settings, onChange, onReset }: ControlPanelProps)
         <Palette size={16} />
         {settings.preserveColor ? "使用原色" : "还原色彩"}
       </button>
+
+      <SelectControl
+        icon={<Crop size={16} />}
+        label="裁剪规格"
+        value={settings.cropPreset}
+        options={cropPresets.map((preset) => ({ value: preset.id, label: preset.label }))}
+        onChange={(value) => onChange("cropPreset", value)}
+      />
 
       <div className="control-stack">
         <SliderControl
@@ -177,6 +186,32 @@ export function ControlPanel({ settings, onChange, onReset }: ControlPanelProps)
         </button>
       </div>
     </aside>
+  );
+}
+
+interface SelectControlProps {
+  icon: React.ReactNode;
+  label: string;
+  value: CropPresetId;
+  options: Array<{ value: CropPresetId; label: string }>;
+  onChange: (value: CropPresetId) => void;
+}
+
+function SelectControl({ icon, label, value, options, onChange }: SelectControlProps) {
+  return (
+    <label className="select-control">
+      <span className="select-control__label">
+        {icon}
+        {label}
+      </span>
+      <select value={value} onChange={(event) => onChange(event.target.value as CropPresetId)}>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 

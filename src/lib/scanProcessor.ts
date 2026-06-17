@@ -1,4 +1,13 @@
 export type ScanStyle = "application" | "balanced" | "crisp" | "mono" | "receipt";
+export type CropPresetId = "none" | "cm-4_5x3_5" | "cm-3_5x4_5" | "one-inch" | "two-inch" | "square";
+
+export interface CropPreset {
+  id: CropPresetId;
+  label: string;
+  ratio: number | null;
+  targetWidth?: number;
+  targetHeight?: number;
+}
 
 export interface ScanSettings {
   style: ScanStyle;
@@ -15,6 +24,7 @@ export interface ScanSettings {
   preserveColor: boolean;
   rotation: number;
   rotationTurns: number;
+  cropPreset: CropPresetId;
 }
 
 export interface ScanResult {
@@ -24,6 +34,7 @@ export interface ScanResult {
   deskewDegrees: number;
   cropApplied: boolean;
   rotationAppliedDegrees: number;
+  cropPresetLabel: string | null;
 }
 
 interface AnalysisPoint {
@@ -58,7 +69,19 @@ export const defaultSettings: ScanSettings = {
   preserveColor: false,
   rotation: 0,
   rotationTurns: 0,
+  cropPreset: "none",
 };
+
+export const cropPresets: CropPreset[] = [
+  { id: "none", label: "原比例", ratio: null },
+  { id: "cm-4_5x3_5", label: "4.5 x 3.5 cm", ratio: 4.5 / 3.5, targetWidth: 531, targetHeight: 413 },
+  { id: "cm-3_5x4_5", label: "3.5 x 4.5 cm", ratio: 3.5 / 4.5, targetWidth: 413, targetHeight: 531 },
+  { id: "one-inch", label: "1寸 2.5 x 3.5 cm", ratio: 2.5 / 3.5, targetWidth: 295, targetHeight: 413 },
+  { id: "two-inch", label: "2寸 3.5 x 5.3 cm", ratio: 3.5 / 5.3, targetWidth: 413, targetHeight: 626 },
+  { id: "square", label: "正方形 1:1", ratio: 1 },
+];
+
+const cropPresetMap = new Map<CropPresetId, CropPreset>(cropPresets.map((preset) => [preset.id, preset]));
 
 const styleAdjustments: Record<
   ScanStyle,
@@ -94,14 +117,16 @@ export async function processScanImage(
   const processed = renderScanPixels(pageCrop.canvas, settings);
   const cropped =
     settings.autoCrop && !pageCrop.applied ? cropCanvas(processed) : { canvas: processed, applied: false };
+  const presetCrop = cropToPreset(cropped.canvas, settings.cropPreset);
 
   return {
-    dataUrl: cropped.canvas.toDataURL("image/png"),
-    width: cropped.canvas.width,
-    height: cropped.canvas.height,
+    dataUrl: presetCrop.canvas.toDataURL("image/png"),
+    width: presetCrop.canvas.width,
+    height: presetCrop.canvas.height,
     deskewDegrees: estimated,
-    cropApplied: pageCrop.applied || cropped.applied,
+    cropApplied: pageCrop.applied || cropped.applied || presetCrop.applied,
     rotationAppliedDegrees: appliedRotation,
+    cropPresetLabel: presetCrop.label,
   };
 }
 
@@ -650,6 +675,58 @@ function rotateCanvas(source: HTMLCanvasElement, degrees: number): HTMLCanvasEle
   context.rotate(radians);
   context.drawImage(source, -source.width / 2, -source.height / 2);
   return canvas;
+}
+
+function cropToPreset(
+  source: HTMLCanvasElement,
+  presetId: CropPresetId,
+): { canvas: HTMLCanvasElement; applied: boolean; label: string | null } {
+  const preset = cropPresetMap.get(presetId) ?? cropPresetMap.get("none");
+  if (!preset || preset.ratio === null) {
+    return { canvas: source, applied: false, label: null };
+  }
+
+  const sourceRatio = source.width / source.height;
+  let sourceX = 0;
+  let sourceY = 0;
+  let sourceWidth = source.width;
+  let sourceHeight = source.height;
+
+  if (sourceRatio > preset.ratio) {
+    sourceWidth = Math.max(1, Math.round(source.height * preset.ratio));
+    sourceX = Math.max(0, Math.floor((source.width - sourceWidth) / 2));
+  } else if (sourceRatio < preset.ratio) {
+    sourceHeight = Math.max(1, Math.round(source.width / preset.ratio));
+    sourceY = Math.max(0, Math.floor((source.height - sourceHeight) / 2));
+  }
+
+  sourceWidth = Math.min(sourceWidth, source.width - sourceX);
+  sourceHeight = Math.min(sourceHeight, source.height - sourceY);
+
+  const outputWidth = preset.targetWidth ?? sourceWidth;
+  const outputHeight = preset.targetHeight ?? sourceHeight;
+  const changed =
+    sourceX > 0 ||
+    sourceY > 0 ||
+    sourceWidth !== source.width ||
+    sourceHeight !== source.height ||
+    outputWidth !== source.width ||
+    outputHeight !== source.height;
+
+  if (!changed) {
+    return { canvas: source, applied: false, label: preset.label };
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = outputWidth;
+  canvas.height = outputHeight;
+  const context = get2d(canvas);
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, outputWidth, outputHeight);
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = "high";
+  context.drawImage(source, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, outputWidth, outputHeight);
+  return { canvas, applied: true, label: preset.label };
 }
 
 function cropCanvas(source: HTMLCanvasElement): { canvas: HTMLCanvasElement; applied: boolean } {
