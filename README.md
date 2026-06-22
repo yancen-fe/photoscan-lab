@@ -8,10 +8,6 @@ PhotoScan Lab 是一个纯浏览器运行的图片转扫描件工具。它可以
 
 所有图片处理都在本地浏览器中完成，不会上传到服务器。
 
-### 在线体验
-
-https://photoscan.yancen.top/
-
 ### 功能
 
 - 上传或拖拽导入 JPG、PNG、WEBP、BMP 图片
@@ -81,10 +77,6 @@ https://github.com/yancen-fe/photoscan-lab
 PhotoScan Lab is a browser-only tool for turning uploaded photos into scan-style document images. It is designed for application materials, forms, certificates, and other upload-ready document scenarios. It can also preserve the original colors while only applying rotation and alignment adjustments.
 
 All image processing runs locally in the browser. Images are not uploaded to a server.
-
-### Online Demo
-
-https://photoscan.yancen.top/
 
 ### Features
 
